@@ -1,0 +1,47 @@
+<%= form_with(model: mihan) do |form| %>
+  <% if mihan.errors.any? %>
+    <div style="color: red">
+      <h2><%= pluralize(mihan.errors.count, "error") %> prohibited this mihan from being saved:</h2>
+
+      <ul>
+        <% mihan.errors.each do |error| %>
+          <li><%= error.full_message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div>
+    <%= form.label :foreigners_in_excel_not_in_csv, style: "display: block" %>
+    <%= form.text_field :foreigners_in_excel_not_in_csv %>
+  </div>
+
+  <div>
+    <%= form.label :foreigners_without_residence, style: "display: block" %>
+    <%= form.text_field :foreigners_without_residence %>
+  </div>
+
+  <div>
+    <%= form.label :saudis_only_in_csv, style: "display: block" %>
+    <%= form.text_field :saudis_only_in_csv %>
+  </div>
+
+  <div>
+    <%= form.label :saudis_in_excel_not_in_csv, style: "display: block" %>
+    <%= form.text_field :saudis_in_excel_not_in_csv %>
+  </div>
+
+  <div>
+    <%= form.label :saudis_in_both_files_half, style: "display: block" %>
+    <%= form.text_field :saudis_in_both_files_half %>
+  </div>
+
+  <div>
+    <%= form.label :saudis_in_both_files_zero, style: "display: block" %>
+    <%= form.text_field :saudis_in_both_files_zero %>
+  </div>
+
+  <div>
+    <%= form.submit %>
+  </div>
+<% end %>

@@ -1,0 +1,17 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  foreigners_in_excel_not_in_csv: MyString
+  foreigners_without_residence: MyString
+  saudis_only_in_csv: MyString
+  saudis_in_excel_not_in_csv: MyString
+  saudis_in_both_files_half: MyString
+  saudis_in_both_files_zero: MyString
+
+two:
+  foreigners_in_excel_not_in_csv: MyString
+  foreigners_without_residence: MyString
+  saudis_only_in_csv: MyString
+  saudis_in_excel_not_in_csv: MyString
+  saudis_in_both_files_half: MyString
+  saudis_in_both_files_zero: MyString
