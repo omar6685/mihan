@@ -172,7 +172,7 @@ class MihansController < ApplicationController
           end
         end
         # Initialize a hash to store the names of non-Saudis in CSV but not in Excel
-        non_saudis_in_csv = {}
+        foreigners_in_csv_not_in_excel = {}
         
         # Iterate through each row in the CSV data (skipping the header)
         csv_data[1..-1].each do |csv_row|
@@ -184,7 +184,7 @@ class MihansController < ApplicationController
           # Check if the contributor is not in Excel and is not Saudi
           if !match_excel && csv_row[2].strip.downcase != "سعودي"
             # Add the name to the hash
-            non_saudis_in_csv[contributor_name_csv] = true
+            foreigners_in_csv_not_in_excel[contributor_name_csv] = true
           end
         end
         
@@ -208,8 +208,8 @@ class MihansController < ApplicationController
           saudis_in_excel_not_in_csv: saudis_in_excel_not_in_csv,
           saudis_in_both_files_half: saudis_in_both_files_half,
           saudis_in_both_files_zero: saudis_in_both_files_zero,
-          foreigners_without_residence: non_saudis_in_csv,
-          foreigners_in_excel_not_in_csv: foreigners_in_excel_not_in_csv
+          foreigners_in_excel_not_in_csv: foreigners_in_excel_not_in_csv,
+          foreigners_in_csv_not_in_excel: foreigners_in_csv_not_in_excel
         )
         # Now, contributor_data hash contains the information for contributors existing in both files
   
