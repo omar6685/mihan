@@ -8,11 +8,21 @@
     <strong>Foreigners in csv not in excel:</strong>
     <%= mihan.foreigners_in_csv_not_in_excel %>
   </p>
-
-  <p>
-    <strong>Foreigners without residence:</strong>
-    <%= mihan.foreigners_without_residence %>
-  </p>
+  <strong>Fwithout residence card :</strong>
+  <% if @foreigners_without_residence.empty? %>
+    <p>No non-Saudis without residence card found.</p>
+  <% else %>
+      <% @foreigners_without_residence.each do |name, data| %>
+        <tr>
+          <td><%= name %></td>
+          <td><%= data[:border_number] %></td>
+          <td><%= data[:entry_date] %></td>
+          <td><%= data[:entry_date_gregorian] %></td>
+          <td><%= data[:days_remaining] %></td>
+        </tr>
+      <% end %>
+    </table>
+  <% end %>
 
   <p>
     <strong>Saudis only in csv:</strong>

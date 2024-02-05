@@ -8,6 +8,8 @@ class MihansController < ApplicationController
 
   # GET /mihans/1 or /mihans/1.json
   def show
+    @foreigners_without_residence = @mihan.foreigners_without_residence.present? ? JSON.parse(@mihan.foreigners_without_residence) : {}
+
   end
 
   # GET /mihans/new
@@ -187,6 +189,59 @@ class MihansController < ApplicationController
             foreigners_in_csv_not_in_excel[contributor_name_csv] = true
           end
         end
+        require 'hijri'
+
+        # Function to convert Hijri date to Gregorian
+        def hijri_to_gregorian(hijri_date)
+          hijri_parts = hijri_date.split('/')
+          year, month, day = hijri_parts.map(&:to_i)
+          Hijri::Date.new(year, month, day).to_greo
+        end
+        
+        # Function to calculate remaining days within 90 days for resident permit
+        def remaining_days(entry_date_gregorian)
+          # Assuming today is the current date
+          today = Date.today
+          permit_deadline = entry_date_gregorian + 90 # Adding 90 days to the entry date
+        
+          # Calculate the remaining days
+          remaining_days = (permit_deadline - today).to_i
+        
+          # Ensure the result is non-negative
+          remaining_days >= 0 ? remaining_days : 0
+        end
+        
+        # Initialize a hash to store the names of non-Saudis without "الإقامة - البطاقة" number, "رقم الحدود", "تاريخ دخول المملكة", and remaining days
+        foreigners_without_residence = {}
+        
+        # Iterate through each row in the CSV data (skipping the header)
+        csv_data[1..-1].each do |csv_row|
+          contributor_name_csv = csv_row[0].strip.downcase # Assuming the name is in the first column
+          border_number_csv = csv_row[5].strip unless csv_row[5].nil? # Assuming "رقم الحدود" is in the sixth column
+          entry_date_csv = csv_row[9].strip unless csv_row[9].nil? # Assuming "تاريخ دخول المملكة" is in the tenth column
+        
+          # Check if the contributor is not Saudi, does not have "الإقامة - البطاقة" number, and has a "رقم الحدود" and "تاريخ دخول المملكة"
+          if csv_row[2].strip.downcase != "سعودي" && csv_row[6].nil? && !border_number_csv.nil? && !entry_date_csv.nil?
+            # Convert "تاريخ دخول المملكة" from Hijri to Gregorian
+            gregorian_entry_date = hijri_to_gregorian(entry_date_csv)
+        
+            # Calculate the remaining days within 90 days for resident permit
+            days_remaining = remaining_days(gregorian_entry_date)
+        
+            # Add the name, "رقم الحدود", "تاريخ دخول المملكة", "entry_date_gregorian", and remaining days to the hash
+            foreigners_without_residence[contributor_name_csv] = {
+              border_number: border_number_csv,
+              entry_date: entry_date_csv,
+              entry_date_gregorian: gregorian_entry_date,
+              days_remaining: days_remaining
+            }
+          end
+        end
+        # Assuming excel_data is a 2D array representing Excel data
+        company_name = excel_data[1][4].strip # Assuming "إسم المنشأة" is in the fifth column (index 4)
+        
+        # Now, the company_name variable contains the name of the company
+        # Now, non_saudis_without_residence_card contains the names of non-Saudis without "الإقامة - البطاقة" number, "رقم الحدود", "تاريخ دخول المملكة", "entry_date_gregorian", and remaining days within 90 days for resident permit
         
         # Now, non_saudis_in_csv contains the names of non-Saudis in CSV but not in Excel
         # Now, non_saudis_in_excel contains the names of non-Saudis in Excel but not in CSV
@@ -209,7 +264,9 @@ class MihansController < ApplicationController
           saudis_in_both_files_half: saudis_in_both_files_half,
           saudis_in_both_files_zero: saudis_in_both_files_zero,
           foreigners_in_excel_not_in_csv: foreigners_in_excel_not_in_csv,
-          foreigners_in_csv_not_in_excel: foreigners_in_csv_not_in_excel
+          foreigners_in_csv_not_in_excel: foreigners_in_csv_not_in_excel,
+          foreigners_without_residence: foreigners_without_residence.to_json,
+          company_name: company_name
         )
         # Now, contributor_data hash contains the information for contributors existing in both files
   
