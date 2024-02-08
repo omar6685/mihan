@@ -1,0 +1,22 @@
+<%= form_with(url: generate_report_mihan_mowatans_path, method: :post, local: true, multipart: true) do |form| %>
+  <!-- Display errors if any -->
+  <% if mihan_mowatan.errors.any? %>
+    <div style="color: red">
+      <h2><%= pluralize(mihan_mowatan.errors.count, "error") %> prohibited this mihan_mowatan from being saved:</h2>
+
+      <ul>
+        <% mihan_mowatan.errors.each do |error| %>
+          <li><%= error.full_message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div>  
+    <!-- File upload field for .xlsx file -->
+    <%= form.file_field :xlsx_file, accept: '.xlsx' %>
+
+    <!-- Submit button -->
+    <%= form.submit "Generate Report" %>
+  </div>
+<% end %>

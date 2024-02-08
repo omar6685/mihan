@@ -1,0 +1,2 @@
+class MihanMowatan < ApplicationRecord
+end
