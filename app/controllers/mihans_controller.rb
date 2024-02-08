@@ -8,7 +8,6 @@ class MihansController < ApplicationController
 
   # GET /mihans/1 or /mihans/1.json
   def show
-    @foreigners_without_residence = @mihan.foreigners_without_residence.present? ? JSON.parse(@mihan.foreigners_without_residence) : {}
 
   end
 
@@ -46,147 +45,114 @@ class MihansController < ApplicationController
         # Process .xlsx file
         workbook = Roo::Spreadsheet.open(xlsx_file.tempfile.path, headers: true)
         worksheet = workbook.sheet(0)
-        
+  
         # Extract the data from Excel file
         excel_data = worksheet.to_a
   
         # Process .csv file
         csv_data = CSV.read(csv_file.tempfile.path, headers: true)
-        # Initialize a hash to store the mapping of names
-        contributor_data = {}
-        
-        # Iterate through each row in the CSV file (skipping the header)
-        csv_data[1..-1].each do |csv_row|
-          contributor_name_csv = csv_row[0].strip # Assuming the name is in the first column
-          contributor_nationality_csv = csv_row[2].strip # Assuming nationality is in the third column
-          basic_wage = csv_row[2].to_i # Assuming BASIC WAGE is in the third column
-          housing = csv_row[3].to_i # Assuming HOUSING is in the fourth column
-        
-          # Search for the contributor in Excel data
-          match_excel = excel_data.find { |excel_row| excel_row[1].casecmp(contributor_name_csv.downcase).zero? }
-        
-          if match_excel
-            # Calculate the salary by adding BASIC WAGE and HOUSING
-            salary = basic_wage + housing
-        
-            # Add the names, nationality, and salary to the hash
-            contributor_data[contributor_name_csv] = {
-              name: match_excel[1].strip,
-              nationality: match_excel[2].strip,
-              salary: salary
+  
+        common_people = {}
+        excel_only_people = {}
+        csv_only_people = {}
+        saudis_in_csv = {}
+        non_saudis_in_csv = {}
+        saudis_in_excel = {}
+        non_saudis_in_excel = {}
+        saudis_in_common_with_salary_range_3000_to_3999 = {}
+        saudis_in_common_with_salary_less_than_3000 = {}
+        non_saudis_without_identifier = {}
+        # Iterate over each row in the CSV file
+        csv_data.each do |csv_row|
+          csv_identifier = csv_row['IDENTIFIER']
+          # Find matching identifier in Excel file
+          matching_excel_row = excel_data.find { |excel_row| excel_row[6] == csv_identifier }
+          
+          if matching_excel_row
+            # Add the common person to the hash
+            common_people[csv_identifier] = {
+              'CONTRIBUTOR_NAME' => matching_excel_row[1],
+              'IDENTIFIER' => csv_row['IDENTIFIER'],
+              'BASIC_WAGE' => csv_row['BASIC WAGE'],
+              'HOUSING' => csv_row['HOUSING'],
+              'COMMISSION' => csv_row['COMMISSION'],
+              'OTHER_ALLOWANCE' => csv_row['OTHER ALLOWANCE'],
+              'الجنسية' => matching_excel_row[2],
+              'رقم المنشأة' => matching_excel_row[3],
+              'إسم المنشأة' => matching_excel_row[4],
+              'رقم الحدود' => matching_excel_row[5],
+              'المهنة' => matching_excel_row[7],
+              'تاريخ انتهاء الاقامة' => matching_excel_row[8],
+              'تاريخ دخول المملكة' => matching_excel_row[9],
+            }
+          else
+            # Add the person only in CSV to the hash
+            csv_only_people[csv_identifier] = {
+              'CONTRIBUTOR_NAME' => csv_row[0],
+              'IDENTIFIER' => csv_row[1],
+              'BASIC_WAGE' => csv_row[2],
+              'HOUSING' => csv_row[3],
+              'COMMISSION' => csv_row[4],
+              'OTHER_ALLOWANCE' => csv_row[5]
             }
           end
         end
-        
-        # Now, the contributor_data hash contains the names, nationality, and salary
+        # Iterate over each row in the Excel file to find people only in Excel
+        excel_data[1..-1].each do |excel_row|
+          excel_identifier = excel_row[6]
+          unless common_people.key?(excel_identifier)
+            # Add the person only in Excel to the hash
+            excel_only_people[excel_identifier] = {
+              'CONTRIBUTOR_NAME' => excel_row[1],
+              'IDENTIFIER' => excel_row[6],
+              'الجنسية' => excel_row[2],
+              'رقم المنشأة' => excel_row[3],
+              'إسم المنشأة' => excel_row[4],
+              'رقم الحدود' => excel_row[5],
+              'المهنة' => excel_row[7],
+              'تاريخ انتهاء الاقامة' => excel_row[8],
+              'تاريخ دخول المملكة' => excel_row[9]
+            }
+          end
+        end
 
-        # Initialize a hash to store the names of Saudis in CSV but not in Excel
-        saudis_only_in_csv = {}
+        csv_only_people.each do |identifier, person_data|
+          if identifier && identifier.start_with?('1')
+            saudis_in_csv[identifier] = person_data
+          else
+            non_saudis_in_csv[identifier] = person_data
+          end
+        end
+  
+        excel_only_people.each do |identifier, person_data|
+          if identifier && identifier.start_with?('1')
+            saudis_in_excel[identifier] = person_data
+          else
+            non_saudis_in_excel[identifier] = person_data
+          end
+        end
         
-        # Iterate through each row in the CSV file (skipping the header)
-        csv_data[1..-1].each do |csv_row|
-          contributor_name_csv = csv_row[0].strip # Assuming the name is in the first column
-          contributor_nationality_csv = csv_row[2].strip # Assuming nationality is in the third column
+        common_people.each do |identifier, person_data|
+          if identifier && identifier.start_with?('1') # Check if the person is Saudi
+            basic_wage = person_data['BASIC_WAGE'].to_i
+            housing = person_data['HOUSING'].to_i
+            salary = basic_wage + housing
         
-          # Search for the contributor in Excel data
-          match_excel = excel_data.find { |excel_row| excel_row[1].casecmp(contributor_name_csv.downcase).zero? }
-        
-          if contributor_nationality_csv.downcase == 'سعودي'
-            if match_excel.nil?
-              # Add the Saudi names to the hash if they are not in the Excel file
-              saudis_only_in_csv[contributor_name_csv] = {
-                nationality: contributor_nationality_csv
-              }
+            if (3000..3999).include?(salary) # Check if the salary falls within the specified range
+              saudis_in_common_with_salary_range_3000_to_3999[identifier] = person_data
             end
           end
         end
-        # Initialize a hash to store the names of Saudis in Excel but not in CSV
-        saudis_in_excel_not_in_csv = {}
         
-        # Helper function to clean and normalize names for comparison
-        def clean_and_normalize(name)
-          name.to_s.gsub(/[^0-9a-zA-Z]/, '').downcase
-        end
+        common_people.each do |identifier, person_data|
+          if identifier && identifier.start_with?('1') # Check if the person is Saudi
+            basic_wage = person_data['BASIC_WAGE'].to_i
+            housing = person_data['HOUSING'].to_i
+            salary = basic_wage + housing
         
-        # Iterate through each row in the Excel file (skipping the header)
-        excel_data[1..-1].each do |excel_row|
-          contributor_name_excel = clean_and_normalize(excel_row[1])
-          contributor_nationality_excel = excel_row[2].strip # Assuming nationality is in the third column
-        
-          # Search for the contributor in CSV data
-          match_csv = csv_data.find { |csv_row| clean_and_normalize(csv_row[0]) == contributor_name_excel }
-        
-          if contributor_nationality_excel.downcase == 'سعودي'
-            if match_csv.nil?
-              # Add the Saudi names to the hash if they are not in the CSV file
-              saudis_in_excel_not_in_csv[contributor_name_excel] = {
-                nationality: contributor_nationality_excel
-              }
+            if salary < 3000 # Check if the salary is less than 3000
+              saudis_in_common_with_salary_less_than_3000[identifier] = person_data
             end
-          end
-        end
-        # Initialize a hash to store the names of Saudis with the specified salary range
-        saudis_in_both_files_half = {}
-        
-        # Iterate through each row in the CSV file (skipping the header)
-        csv_data[1..-1].each do |csv_row|
-          contributor_name_csv = csv_row[0].strip # Assuming the name is in the first column
-          contributor_nationality_csv = csv_row[2].strip # Assuming nationality is in the third column
-          basic_wage = csv_row[2].to_i # Assuming BASIC WAGE is in the third column
-          housing = csv_row[3].to_i # Assuming HOUSING is in the fourth column
-        
-          # Check if the contributor is Saudi and has a salary between 3000 and 3999
-          if contributor_nationality_csv == "سعودي" && (3000..3999).cover?(basic_wage + housing)
-            # Add the name to the hash
-            saudis_in_both_files_half[contributor_name_csv] = true
-          end
-        end
-        # Initialize a hash to store the names of Saudis with salary less than 3000
-        saudis_in_both_files_zero = {}
-        
-        # Iterate through each row in the CSV file (skipping the header)
-        csv_data[1..-1].each do |csv_row|
-          contributor_name_csv = csv_row[0].strip # Assuming the name is in the first column
-          contributor_nationality_csv = csv_row[2].strip # Assuming nationality is in the third column
-          basic_wage = csv_row[2].to_i # Assuming BASIC WAGE is in the third column
-          housing = csv_row[3].to_i # Assuming HOUSING is in the fourth column
-        
-          # Check if the contributor is Saudi and has a salary less than 3000
-          if contributor_nationality_csv == "سعودي" && (basic_wage + housing) < 3000
-            # Add the name to the hash
-            saudis_in_both_files_zero[contributor_name_csv] = true
-          end
-        end
-        # Initialize a hash to store the names of non-Saudis in Excel but not in CSV
-        foreigners_in_excel_not_in_csv = {}
-        
-        # Iterate through each row in the Excel data (skipping the header)
-        excel_data[1..-1].each do |excel_row|
-          contributor_name_excel = excel_row[1].strip.downcase # Assuming the name is in the second column
-        
-          # Search for the contributor in CSV data
-          match_csv = csv_data.find { |csv_row| csv_row[0].strip.downcase == contributor_name_excel }
-        
-          # Check if the contributor is not in CSV and is not Saudi
-          if !match_csv && excel_row[2].strip != "سعودي"
-            # Add the name to the hash
-            foreigners_in_excel_not_in_csv[excel_row[1].strip] = true
-          end
-        end
-        # Initialize a hash to store the names of non-Saudis in CSV but not in Excel
-        foreigners_in_csv_not_in_excel = {}
-        
-        # Iterate through each row in the CSV data (skipping the header)
-        csv_data[1..-1].each do |csv_row|
-          contributor_name_csv = csv_row[0].strip.downcase # Assuming the name is in the first column
-        
-          # Search for the contributor in Excel data
-          match_excel = excel_data.find { |excel_row| excel_row[1].strip.downcase == contributor_name_csv }
-        
-          # Check if the contributor is not in Excel and is not Saudi
-          if !match_excel && csv_row[2].strip.downcase != "سعودي"
-            # Add the name to the hash
-            foreigners_in_csv_not_in_excel[contributor_name_csv] = true
           end
         end
         require 'hijri'
@@ -211,64 +177,39 @@ class MihansController < ApplicationController
           remaining_days >= 0 ? remaining_days : 0
         end
         
-        # Initialize a hash to store the names of non-Saudis without "الإقامة - البطاقة" number, "رقم الحدود", "تاريخ دخول المملكة", and remaining days
-        foreigners_without_residence = {}
+        excel_data.each do |excel_row|
+          identifier = excel_row[6] # Assuming 'IDENTIFIER' is in the 7th column
+          if identifier.nil? || identifier.empty? 
+            entry_date_hijri = excel_row[9] # Assuming 'تاريخ دخول المملكة' is in the 10th column
+            name = excel_row[1] 
+            border_number = excel_row[5] 
+            entry_date_gregorian = hijri_to_gregorian(entry_date_hijri) # Convert Hijri date to Gregorian
+            remaining_days = remaining_days(entry_date_gregorian) # Calculate remaining days
         
-        # Iterate through each row in the CSV data (skipping the header)
-        csv_data[1..-1].each do |csv_row|
-          contributor_name_csv = csv_row[0].strip.downcase # Assuming the name is in the first column
-          border_number_csv = csv_row[5].strip unless csv_row[5].nil? # Assuming "رقم الحدود" is in the sixth column
-          entry_date_csv = csv_row[9].strip unless csv_row[9].nil? # Assuming "تاريخ دخول المملكة" is in the tenth column
-        
-          # Check if the contributor is not Saudi, does not have "الإقامة - البطاقة" number, and has a "رقم الحدود" and "تاريخ دخول المملكة"
-          if csv_row[2].strip.downcase != "سعودي" && csv_row[6].nil? && !border_number_csv.nil? && !entry_date_csv.nil?
-            # Convert "تاريخ دخول المملكة" from Hijri to Gregorian
-            gregorian_entry_date = hijri_to_gregorian(entry_date_csv)
-        
-            # Calculate the remaining days within 90 days for resident permit
-            days_remaining = remaining_days(gregorian_entry_date)
-        
-            # Add the name, "رقم الحدود", "تاريخ دخول المملكة", "entry_date_gregorian", and remaining days to the hash
-            foreigners_without_residence[contributor_name_csv] = {
-              border_number: border_number_csv,
-              entry_date: entry_date_csv,
-              entry_date_gregorian: gregorian_entry_date,
-              days_remaining: days_remaining
+            non_saudis_without_identifier[name] = {
+              'NAME' => name,
+              'BORDER_NUMBER' => border_number,
+              'ENTRY_DATE_HIJRI' => entry_date_hijri,
+              'ENTRY_DATE' => entry_date_gregorian,
+              'REMAINING_DAYS' => remaining_days
             }
           end
         end
-        # Assuming excel_data is a 2D array representing Excel data
         company_name = excel_data[1][4].strip # Assuming "إسم المنشأة" is in the fifth column (index 4)
+        # Now you have a hash non_saudis_without_identifier containing non-Saudi contributors in excel_data without an 'IDENTIFIER', along with their entry date in Hijri and remaining days.
         
-        # Now, the company_name variable contains the name of the company
-        # Now, non_saudis_without_residence_card contains the names of non-Saudis without "الإقامة - البطاقة" number, "رقم الحدود", "تاريخ دخول المملكة", "entry_date_gregorian", and remaining days within 90 days for resident permit
-        
-        # Now, non_saudis_in_csv contains the names of non-Saudis in CSV but not in Excel
-        # Now, non_saudis_in_excel contains the names of non-Saudis in Excel but not in CSV
-
-        
-        # Now, non_saudis_in_excel contains the names of non-Saudis in Excel but not in CSV
-
-        # Now, saudis_with_low_salary contains the names of Saudis with salary less than 3000
-
-        # Now, saudis_with_salary_range contains the names of Saudis with the specified salary range
-
-        # Now, the saudis_not_in_csv hash contains the names of Saudis not in the CSV file
-
-        # Now, the saudis_not_in_excel hash contains the names of Saudis not in the Excel file
-
-        # Now, the contributor_data hash contains the desired mapping
+        # Now, common_people hash contains the information for common contributors in both files
+        # excel_only_people hash contains the information for contributors only in Excel
+        # csv_only_people hash contains the information for contributors only in CSV
         Mihan.create(
-          saudis_only_in_csv: saudis_only_in_csv,
-          saudis_in_excel_not_in_csv: saudis_in_excel_not_in_csv,
-          saudis_in_both_files_half: saudis_in_both_files_half,
-          saudis_in_both_files_zero: saudis_in_both_files_zero,
-          foreigners_in_excel_not_in_csv: foreigners_in_excel_not_in_csv,
-          foreigners_in_csv_not_in_excel: foreigners_in_csv_not_in_excel,
-          foreigners_without_residence: foreigners_without_residence.to_json,
-          company_name: company_name
+          saudis_only_in_csv: saudis_in_csv,
+          saudis_in_excel_not_in_csv: saudis_in_excel,
+          saudis_in_both_files_half: saudis_in_common_with_salary_range_3000_to_3999,
+          saudis_in_both_files_zero: saudis_in_common_with_salary_less_than_3000,
+          foreigners_in_csv_not_in_excel: non_saudis_in_csv,
+          foreigners_in_excel_not_in_csv: non_saudis_in_excel,
+          foreigners_without_residence: non_saudis_without_identifier,
         )
-        # Now, contributor_data hash contains the information for contributors existing in both files
   
         redirect_to root_path, notice: 'Reports generated successfully!'
       else
@@ -278,6 +219,7 @@ class MihansController < ApplicationController
       redirect_to root_path, alert: 'Please upload both .xlsx and .csv files.'
     end
   end
+   
   
 
   # PATCH/PUT /mihans/1 or /mihans/1.json
