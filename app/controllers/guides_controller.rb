@@ -8,6 +8,8 @@ class GuidesController < ApplicationController
 
   # GET /guides/1 or /guides/1.json
   def show
+    @mihan_mowatan = MihanMowatan.find(params[:id])
+    @result = JSON.parse(@mihan_mowatan.result)  # Parse the JSON string
   end
 
   # GET /guides/new
@@ -45,9 +47,11 @@ class GuidesController < ApplicationController
       # Extract the data from Excel file
       excel_data = worksheet.to_a
       
-      Guide.create(
-        file: excel_data,
-      )
+      # Convert the Excel data to JSON
+      excel_data_json = excel_data.to_json
+  
+      # Create a Guide record with the JSON data
+      Guide.create(file: excel_data_json)
 
       redirect_to root_path, notice: 'Reports generated successfully!'
 

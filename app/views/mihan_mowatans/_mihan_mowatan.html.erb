@@ -1,12 +1,34 @@
-<div id="<%= dom_id mihan_mowatan %>">
-  <p>
-    <strong>Result:</strong>
-    <%= mihan_mowatan.result %>
-  </p>
-
-  <p>
-    <strong>Company name:</strong>
-    <%= mihan_mowatan.company_name %>
-  </p>
-
-</div>
+<table>
+  <thead>
+    <tr>
+      <th>Category</th>
+      <th>Applicable</th>
+      <th>Employees</th>
+      <th>Required Percentage</th>
+      <th>Actual Saudi Percentage</th>
+      <th>Required Saudis</th>
+      <th>Advice</th>
+      <th>Assistance Condition</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% @result.each do |category, data| %>
+      <tr>
+        <td><%= category %></td>
+        <td><%= data["applicable"] %></td>
+        <td>
+          <ul>
+            <% data["employees"].each do |employee| %>
+              <li><%= employee %></li>
+            <% end %>
+          </ul>
+        </td>
+        <td><%= data["required_percentage"] %></td>
+        <td><%= data["actual_saudi_percentage"] %></td>
+        <td><%= data["required_saudis"] %></td>
+        <td><%= data["advice"] %></td>
+        <td><%= data["assistance_condition"] %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>

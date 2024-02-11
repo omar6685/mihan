@@ -8,6 +8,8 @@ class MihanMowatansController < ApplicationController
 
   # GET /mihan_mowatans/1 or /mihan_mowatans/1.json
   def show
+    @mihan_mowatan = MihanMowatan.find(params[:id])
+    @result = JSON.parse(@mihan_mowatan.result)
   end
 
   # GET /mihan_mowatans/new
@@ -46,13 +48,11 @@ class MihanMowatansController < ApplicationController
       excel_data = worksheet.to_a
 
 
-      company_name = excel_data[1][4].strip 
       
-      result = process_excel_data(excel_data)  # You need to implement this method
+      result = process_employee_list(excel_data)  # You need to implement this method
 
-      Mihan.create(
-        result: result,
-        company_name: company_name,
+      MihanMowatan.create(
+        result: result.to_json,
       )
 
       redirect_to root_path, notice: 'Reports generated successfully!'
@@ -97,8 +97,79 @@ class MihanMowatansController < ApplicationController
     def mihan_mowatan_params
       params.require(:mihan_mowatan).permit(:result, :company_name)
     end
+
+    def process_employee_list(excel_data)
+      # Load guide data and parse JSON
+      guide_data_json = Guide.last.file
+      guide_data = JSON.parse(guide_data_json)
     
-    # Method to process Excel data
-    def process_excel_data(data)
+      # Process guide data and prepare necessary structures
+      guide_mapping = {}
+      guide_data.each_with_index do |row, index|
+        next if index == 0  # Skip the header row
+        category = row[1]
+        jobs = row[2].split('،').map(&:strip)
+        guide_mapping[category] ||= []
+        guide_mapping[category] += jobs
+      end
+    
+      # Initialize category counts
+      category_counts = Hash.new { |h, k| h[k] = { total: 0, saudi: 0 } }
+    
+      # Iterate through employee data and calculate metrics
+      excel_data.each do |employee|
+        job = employee[7]
+        nationality = employee[2]
+    
+        guide_mapping.each do |category, jobs|
+          if jobs.include?(job)
+            category_counts[category][:total] += 1
+            category_counts[category][:saudi] += 1 if nationality == 'سعودي'
+          end
+        end
+      end
+    
+      # Process results
+      results = {}
+      category_counts.each do |category, counts|
+        guide_row = guide_data.find { |row| row[1] == category }
+        next unless guide_row
+    
+        saudi_percentage = counts[:total] == counts[:saudi] ? 100 : ((counts[:saudi] / counts[:total].to_f) * 100).round(2)
+        applicable = counts[:total] >= guide_row[3] && saudi_percentage < guide_row[4] ? 'نعم' : 'لا'
+    
+        # Filter employees based on guide jobs
+        employees = excel_data.select { |employee| guide_mapping[category].include?(employee[7]) }.map { |employee| employee[1] }
+    
+        # Prepare result
+        results[category] = {
+          applicable: applicable,
+          employees: employees,
+          required_percentage: guide_row[4],
+          actual_saudi_percentage: saudi_percentage,
+          required_saudis: applicable == 'نعم' ? required_saudi(counts[:saudi], counts[:total], guide_row[4]) : 0,
+          advice: applicable == 'نعم' ? guide_row[9] : '--',
+          assistance_condition: applicable == 'نعم' ? guide_row[10] : '--'
+        }
+      end
+    
+      results
+    end
+    
+    
+    
+    def required_saudi(actual_saudi, total, percentage)
+      add = 0
+      p = 0
+      return 0 if total == 0
+    
+      loop do
+        p = ((actual_saudi + add) / total) * 100
+        break if p >= percentage
+    
+        add += 1
+      end
+    
+      add
     end
 end
