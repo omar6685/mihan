@@ -1,4 +1,5 @@
-<%= form_with(model: guide) do |form| %>
+<%= form_with(url: generate_report_guides_path, method: :post, local: true, multipart: true) do |form| %>
+  <!-- Display errors if any -->
   <% if guide.errors.any? %>
     <div style="color: red">
       <h2><%= pluralize(guide.errors.count, "error") %> prohibited this guide from being saved:</h2>
@@ -11,12 +12,11 @@
     </div>
   <% end %>
 
-  <div>
-    <%= form.label :file, style: "display: block" %>
-    <%= form.text_field :file %>
-  </div>
+  <div>  
+    <!-- File upload field for .xlsx file -->
+    <%= form.file_field :xlsx_file, accept: '.xlsx' %>
 
-  <div>
-    <%= form.submit %>
+    <!-- Submit button -->
+    <%= form.submit "Generate Report" %>
   </div>
 <% end %>

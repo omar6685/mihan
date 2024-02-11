@@ -34,6 +34,28 @@ class GuidesController < ApplicationController
     end
   end
 
+  def generate_report
+    xlsx_file = params[:xlsx_file]
+  
+    if xlsx_file.present? && xlsx_file.content_type == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+      # Process .xlsx file
+      workbook = Roo::Spreadsheet.open(xlsx_file.tempfile.path, headers: true)
+      worksheet = workbook.sheet(0)
+
+      # Extract the data from Excel file
+      excel_data = worksheet.to_a
+      
+      Guide.create(
+        file: excel_data,
+      )
+
+      redirect_to root_path, notice: 'Reports generated successfully!'
+
+    else
+      redirect_to root_path, alert: 'Please upload valid .xlsx'
+    end
+  end
+
   # PATCH/PUT /guides/1 or /guides/1.json
   def update
     respond_to do |format|
