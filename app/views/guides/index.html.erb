@@ -1,0 +1,14 @@
+<p style="color: green"><%= notice %></p>
+
+<h1>Guides</h1>
+
+<div id="guides">
+  <% @guides.each do |guide| %>
+    <%= render guide %>
+    <p>
+      <%= link_to "Show this guide", guide %>
+    </p>
+  <% end %>
+</div>
+
+<%= link_to "New guide", new_guide_path %>

@@ -1,0 +1,10 @@
+<p style="color: green"><%= notice %></p>
+
+<%= render @guide %>
+
+<div>
+  <%= link_to "Edit this guide", edit_guide_path(@guide) %> |
+  <%= link_to "Back to guides", guides_path %>
+
+  <%= button_to "Destroy this guide", @guide, method: :delete %>
+</div>
