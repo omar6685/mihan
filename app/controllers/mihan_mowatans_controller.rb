@@ -102,7 +102,7 @@ class MihanMowatansController < ApplicationController
       # Load guide data and parse JSON
       guide_data_json = Guide.last.file
       guide_data = JSON.parse(guide_data_json)
-    
+      
       # Process guide data and prepare necessary structures
       guide_mapping = {}
       guide_data.each_with_index do |row, index|
@@ -112,15 +112,15 @@ class MihanMowatansController < ApplicationController
         guide_mapping[category] ||= []
         guide_mapping[category] += jobs
       end
-    
+
       # Initialize category counts
       category_counts = Hash.new { |h, k| h[k] = { total: 0, saudi: 0 } }
-    
+      
       # Iterate through employee data and calculate metrics
       excel_data.each do |employee|
         job = employee[7]
         nationality = employee[2]
-    
+      
         guide_mapping.each do |category, jobs|
           if jobs.include?(job)
             category_counts[category][:total] += 1
@@ -128,48 +128,46 @@ class MihanMowatansController < ApplicationController
           end
         end
       end
-    
+      
       # Process results
       results = {}
       category_counts.each do |category, counts|
         guide_row = guide_data.find { |row| row[1] == category }
         next unless guide_row
-    
+        
         saudi_percentage = counts[:total] == counts[:saudi] ? 100 : ((counts[:saudi] / counts[:total].to_f) * 100).round(2)
         applicable = counts[:total] >= guide_row[3] && saudi_percentage < guide_row[4] ? 'نعم' : 'لا'
-    
+        
         # Filter employees based on guide jobs
         employees = excel_data.select { |employee| guide_mapping[category].include?(employee[7]) }.map { |employee| employee[1] }
-    
+        
         # Prepare result
         results[category] = {
           applicable: applicable,
           employees: employees,
           required_percentage: guide_row[4],
           actual_saudi_percentage: saudi_percentage,
-          required_saudis: applicable == 'نعم' ? required_saudi(counts[:saudi], counts[:total], guide_row[4]) : 0,
+          required_saudis: applicable == 'نعم' ? required_saudi(counts[:saudi], counts[:total], guide_row[4]) : 0, # Corrected line
           advice: applicable == 'نعم' ? guide_row[9] : '--',
           assistance_condition: applicable == 'نعم' ? guide_row[10] : '--'
         }
       end
-    
+      
       results
     end
-    
-    
-    
     def required_saudi(actual_saudi, total, percentage)
-      add = 0
-      p = 0
       return 0 if total == 0
     
+      add = 0
       loop do
-        p = ((actual_saudi + add) / total) * 100
+        p = ((actual_saudi + add) / total.to_f) * 100
         break if p >= percentage
-    
+        
         add += 1
       end
-    
+      
       add
     end
+
+    
 end
