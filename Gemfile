@@ -75,3 +75,4 @@ group :test do
 end
 gem 'roo'
 gem 'hijri'
+gem 'devise'
